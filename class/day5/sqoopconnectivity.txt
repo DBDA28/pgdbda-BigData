@@ -1,0 +1,83 @@
+
+[cloudera@quickstart lab3.1]$ cp salaries.txt /tmp
+
+[cloudera@quickstart lab3.1]$ mysql -u root -p
+Enter password: cloudera
+
+mysql> create database test;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> use test;
+
+mysql> create table salaries (gender varchar(1), age int, salary double,
+    -> zipcode int);
+Query OK, 0 rows affected (0.20 sec)
+
+
+mysql> load data local infile '/tmp/salaries.txt' into table salaries fields terminated by ',';
+Query OK, 50 rows affected (0.01 sec)
+Records: 50  Deleted: 0  Skipped: 0  Warnings: 0
+
+mysql> select * from salaries;
+
+mysql> desc salaries;
++---------+------------+------+-----+---------+-------+
+| Field   | Type       | Null | Key | Default | Extra |
++---------+------------+------+-----+---------+-------+
+| gender  | varchar(1) | YES  |     | NULL    |       |
+| age     | int(11)    | YES  |     | NULL    |       |
+| salary  | double     | YES  |     | NULL    |       |
+| zipcode | int(11)    | YES  |     | NULL    |       |
++---------+------------+------+-----+---------+-------+
+4 rows in set (0.00 sec)
+
+mysql> alter table salaries add column `id` int(10) unsigned primary key auto_increment;
+Query OK, 50 rows affected (0.07 sec)
+Records: 50  Duplicates: 0  Warnings: 0
+
+mysql> desc salaries;
++---------+------------------+------+-----+---------+----------------+
+| Field   | Type             | Null | Key | Default | Extra          |
++---------+------------------+------+-----+---------+----------------+
+| gender  | varchar(1)       | YES  |     | NULL    |                |
+| age     | int(11)          | YES  |     | NULL    |                |
+| salary  | double           | YES  |     | NULL    |                |
+| zipcode | int(11)          | YES  |     | NULL    |                |
+| id      | int(10) unsigned | NO   | PRI | NULL    | auto_increment |
++---------+------------------+------+-----+---------+----------------+
+5 rows in set (0.00 sec)
+
+#importing datatables from mysql to HDFS
+
+sqoop import --connect jdbc:mysql://localhost:3306/test --table salaries --username root --password cloudera    #(default 4 mappers)
+
+sqoop import --connect jdbc:mysql://quickstart.cloudera:3306/test \
+--driver com.mysql.jdbc.Driver \
+--username root --password cloudera \
+--table salaries \
+--columns salary,age -m 1 \   # -m is flag for mapper one in this case
+--target-dir salaries2
+
+sqoop import --connect jdbc:mysql://quickstart.cloudera:3306/test --driver com.mysql.jdbc.Driver --username root --password cloudera --query "select * from salaries s where s.salary > 90000.00 and \$CONDITIONS" --split-by gender -m 2 --target-dir salaries3
+
+
+## see the job history on the terminal
+yarn logs -applicationId application_1685073793666_0002
+
+#Demonstration: Understanding MapReduce
+
+hdfs dfs -put constitution.txt constitution.txt
+
+sudo find / -type l -name hadoop-mapreduce-examples.jar 
+
+yarn jar /usr/lib/hadoop-mapreduce/hadoop-mapreduce-examples-2.6.0-cdh5.13.0.jar  wordcount constitution.txt wordcount_output
+
+yarn jar /usr/lib/hadoop-mapreduce/hadoop-mapreduce-examples-2.6.0-cdh5.13.0.jar  wordcount -D mapreduce.job.reduces=2 constitution.txt wordcount_output
+#set no of reducers using flag `-D mapreduce.job.reduces=2`
+
+
+
+
+
+
+

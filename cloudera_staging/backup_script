@@ -1,0 +1,54 @@
+#!/bin/bash
+#Author: PRN 5005 & 5007
+#Date Created: 29-05-2023
+#Last Modified: 29-05-2023
+#Description: creates a tar file for all the home directory files in the target directory ~/bash_course 
+#Usage: creates back up. 
+function shutdown() {
+    tput cnorm # reset cursor
+}
+trap shutdown EXIT
+
+function cursorBack() {
+    echo -en "\033[$1D"
+}
+
+function spinner() {
+    local pid=$1 # Process Id of the previous running command
+
+    #local spin="▁▂▃▄▅▆▇█▇▆▅▄▃▂▁"
+    #local charwidth=3
+    local spin='⣾⣽⣻⢿⡿⣟⣯⣷'
+    local charwidth=3
+    local i=0
+    tput civis # cursor invisible
+    while kill -0 $pid 2>/dev/null; do
+        local i=$(((i + $charwidth) % ${#spin}))
+        printf "%s" "${spin:$i:$charwidth}"
+
+        cursorBack 1
+        sleep .1
+    done
+    tput cnorm
+    wait $pid # capture exit code
+    return $?
+}
+
+("$@") &
+
+user=$(whoami)
+echo -e "Hello, ${user^}\n
+I will now back up your home directory, $HOME"
+
+targetdir=$HOME/bash_course
+currentdir=$(pwd)
+echo -e "You are running this script from $currentdir \n
+Therefore, backup will be saved in $currentdir"
+tar -cvf $currentdir/my_backup_"$(date +%d-%m-%Y_%H-%M-%S)".tar ~/* > /dev/null 2>&1 &
+spinner $!
+if [ $? -eq 0 ] 
+then 
+    echo -e "\n back up created successfully, exit status: $?" 
+else 
+    echo -e "\n back up creation failed, exit status: $?" >&2 
+fi
